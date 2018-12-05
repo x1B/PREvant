@@ -23,8 +23,29 @@
  * THE SOFTWARE.
  * =========================LICENSE_END==================================
  */
-pub mod request_info;
-pub mod service;
-pub mod service_image;
-pub mod ticket_info;
-pub mod web_hook_info;
+use dkregistry::v2::Client;
+use models::service_image::ServiceImage;
+use rocket_contrib::json::Json;
+use tokio::prelude::Stream;
+use tokio_core::reactor::Core;
+
+#[get("/service-images", format = "application/json")]
+pub fn service_images() -> Json<Vec<ServiceImage>> {
+    let tcore = Core::new().unwrap();
+    let dclient = Client::configure(&tcore.handle())
+        .registry("docker.io")
+        .build()
+        .unwrap();
+
+    let fetch = dclient.get_tags("coreos/etcd", None);
+    let rx = fetch.then(|result| {
+        match &result {
+            Ok(e) => println!("tag {}", e),
+            Err(_) => println!("error"),
+        };
+        result
+    });
+
+    let service_images = vec![ServiceImage::new()];
+    Json(service_images)
+}

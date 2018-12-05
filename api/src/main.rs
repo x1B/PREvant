@@ -26,6 +26,7 @@
 #![feature(proc_macro_hygiene, decl_macro, try_from)]
 
 extern crate crossbeam_utils;
+extern crate dkregistry;
 extern crate goji;
 extern crate hyper;
 #[macro_use]
@@ -42,6 +43,7 @@ extern crate serde_json;
 extern crate serde_yaml;
 extern crate shiplift;
 extern crate tokio;
+extern crate tokio_core;
 extern crate toml;
 extern crate url;
 
@@ -56,6 +58,7 @@ use models::request_info::RequestInfo;
 mod apps;
 mod commands;
 mod models;
+mod service_images;
 mod services;
 mod webhooks;
 
@@ -115,5 +118,6 @@ fn main() {
         .mount("/", routes![apps::create_app])
         .mount("/", routes![apps::delete_app])
         .mount("/", routes![webhooks::webhooks])
+        .mount("/", routes![service_images::service_images])
         .launch();
 }

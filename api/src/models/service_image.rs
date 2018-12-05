@@ -23,8 +23,23 @@
  * THE SOFTWARE.
  * =========================LICENSE_END==================================
  */
-pub mod request_info;
-pub mod service;
-pub mod service_image;
-pub mod ticket_info;
-pub mod web_hook_info;
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServiceImage {
+    service_name: String,
+    registry: String,
+    image_user: String,
+    image_repository: String,
+    image_tags: Vec<String>,
+}
+impl ServiceImage {
+    pub fn new() -> ServiceImage {
+        ServiceImage {
+            service_name: String::from("test service"),
+            registry: String::from("docker.io"),
+            image_user: String::from("library"),
+            image_repository: String::from("nginx"),
+            image_tags: vec![String::from("1.15.1"), String::from("1.14.1")],
+        }
+    }
+}

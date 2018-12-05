@@ -1,0 +1,242 @@
+---
+openapi: 3.0.0
+info:
+  description: The Review Apps Proxy API allows to see and manipulate the deployed review apps.
+  version: 1.0.0
+  title: Review Apps Proxy API
+  contact:
+    name: Marc Schreiber
+    email: marc.schreiber@aixigo.de
+paths:
+  /:
+    get:
+      summary: List available meta information that are required for the frontend
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              example:
+                rootUrl: "http://api.example.com/"
+                swaggerUiAvailable: true
+  /apps/:
+    get:
+      summary: List deployed review apps.
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  "^[a-zA-Z0-9_-]":
+                    $ref: "#/components/schemas/Service"
+              example:
+                master:
+                  - vhost: service-x
+                    url: "http://api.example.com/master/service-x/"
+                    versionUrl: "http://api.example.com/master/service-x/version"
+                  - vhost: service-y
+                    url: "http://api.example.com/master/service-y/"
+                    versionUrl: "http://api.example.com/master/service-y/version"
+                XYZ-123:
+                  - vhost: service-x
+                    url: "http://api.example.com/XYZ-123/service-x/"
+                    versionUrl: "http://api.example.com/XYZ-123/service-x/"
+  /apps/tickets/:
+    get:
+      summary: Provides ticket information to each review app
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  "^[a-zA-Z0-9_-]":
+                    $ref: "#/components/schemas/Ticket"
+              example:
+                XYZ-123:
+                  link: "https://jira.example.com/browse/XYZ-123"
+                  summary: fix serialization of Foo
+                  status: In Progress
+  "/apps/{appName}":
+    post:
+      summary: Start or update a new review app.
+      parameters:
+        - in: path
+          name: appName
+          allowEmptyValue: false
+          schema:
+            type: string
+          required: true
+          description: Name of review app to create
+      requestBody:
+        description: Information of review app to create
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/ServiceConfiguration"
+            example:
+              - serviceName: service-x
+                registry: registry.example.com
+                env:
+                  - "DATABASE_SCHEMA=my_schema"
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Service"
+    delete:
+      summary: Shutdown a review app
+      parameters:
+        - in: path
+          name: appName
+          allowEmptyValue: false
+          schema:
+            type: string
+          required: true
+          description: Name of review app to delete
+      responses:
+        "200":
+          description: List of deleted containers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Service"
+  /service-images/:
+    get:
+      summary: Returns a list of service images which are used across every application.
+      responses:
+        "200":
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceImage'
+  /webhooks/:
+    post:
+      summary: Cleans up apps when webhook triggers this resource.
+      description: "If a PR has been merged or declined, a webhook can trigger this resource in order to delete the corresponding review app. Currently supported are webhooks of Bitbucket:\n- [Merged](https://confluence.atlassian.com/bitbucketserver/event-payload-938025882.html#Eventpayload-Merged)\n- [Declined](https://confluence.atlassian.com/bitbucketserver/event-payload-938025882.html#Eventpayload-Declined)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            $ref: "#/components/schemas/BitbucketWebHookPayload"
+components:
+  schemas:
+    Service:
+      type: object
+      properties:
+        vhost:
+          type: string
+        containerType:
+          type: string
+          enum:
+            - replica
+            - linked
+            - instance
+        url:
+          type: string
+          format: url
+        versionUrl:
+          type: string
+          format: url
+      required:
+        - vhost
+        - containerType
+        - url
+        - versionUrl
+    ServiceImage:
+      type: object
+      properties:
+        serviceName:
+          type: string
+          description: "Name of the service to start, e.g. `service-x`"
+        registry:
+          type: string
+          description: "Hostname of the docker registry, containing the image of the service"
+        imageUser:
+          type: string
+          description: "cf. `hub-user` from command `docker push <hub-user>/<repo-name>:<tag>` ([push docker images](https://docs.docker.com/docker-hub/repos/#pushing-a-repository-image-to-docker-hub))"
+        imageRepository:
+          type: string
+          description: "cf. `repo-name` from command `docker push <hub-user>/<repo-name>:<tag>` ([push docker images](https://docs.docker.com/docker-hub/repos/#pushing-a-repository-image-to-docker-hub))"
+        imageTags:
+          type: array
+          items: string
+          description: "cf. `tag` from command `docker push <hub-user>/<repo-name>:<tag>` ([push docker images](https://docs.docker.com/docker-hub/repos/#pushing-a-repository-image-to-docker-hub))"
+    ServiceConfiguration:
+      type: object
+      properties:
+        serviceName:
+          type: string
+          description: "Name of the service to start, e.g. `service-x`"
+        registry:
+          type: string
+          description: "Hostname of the docker registry, containing the image of the service"
+        imageUser:
+          type: string
+          description: "cf. `hub-user` from command `docker push <hub-user>/<repo-name>:<tag>` ([push docker images](https://docs.docker.com/docker-hub/repos/#pushing-a-repository-image-to-docker-hub))"
+        imageRepository:
+          type: string
+          description: "cf. `repo-name` from command `docker push <hub-user>/<repo-name>:<tag>` ([push docker images](https://docs.docker.com/docker-hub/repos/#pushing-a-repository-image-to-docker-hub))"
+        imageTag:
+          type: string
+          description: "cf. `tag` from command `docker push <hub-user>/<repo-name>:<tag>` ([push docker images](https://docs.docker.com/docker-hub/repos/#pushing-a-repository-image-to-docker-hub))"
+        env:
+          type: array
+          items:
+            type: string
+          description: Key value list of enviroment variables
+        volumes:
+          type: array
+          items:
+            type: string
+          description: Volumes to mount
+      required:
+        - serviceName
+        - registry
+    Ticket:
+      type: object
+      properties:
+        link:
+          type: string
+          format: uri
+          description: Link to the ticket in the ticket system.
+        summary:
+          type: string
+          description: Brief description of the ticket
+        status:
+          type: string
+          description: "ticket status, for example, `closed`, `review`, …"
+    BitbucketWebHookPayload:
+      type: object
+      description: "Excerpt of Bitbucket's [event payload](https://confluence.atlassian.com/bitbucketserver/event-payload-938025882.html)"
+      properties:
+        pullRequest:
+          type: object
+          properties:
+            title:
+              type: string
+              description: Title description the pull request.
+            fromRef:
+              type: object
+              properties:
+                displayId:
+                  type: string
+                  description: "The branch name containing the ticket number `XXX-123`."
+                  example: feature/XXX-123-some-feature-branch
